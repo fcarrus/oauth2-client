@@ -1,20 +1,43 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: my-python
+  name: oauth2-client
+  labels:
+    app: oauth2-client
+    app.kubernetes.io/component: oauth2-client
+    app.kubernetes.io/instance: oauth2-client
+    app.kubernetes.io/name: oauth2-client
+    app.kubernetes.io/part-of: oauth2-client-app
+    app.openshift.io/runtime-namespace: oauth2-client
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: python-app
+      app: oauth2-client
   template:
     metadata:
       labels:
-        app: python-app
+        app: oauth2-client
+        deployment: oauth2-client
     spec:
       containers:
-        - name: my-python
-          image: python-image:latest
+        - name: oauth2-client
+          image: quay.io/fcarrus/oauth2-client:latest
+          env:
+            - name: AUTHORIZE_URL
+              value: 'https://aap.example.com/api/o/authorize/'
+            - name: TOKEN_URL
+              value: 'https://aap.example.com/api/o/token/'
+            - name: CLIENT_ID
+              value: 'my_client_id__this_should_come_from_a_secret'
+            - name: CLIENT_SECRET
+              value: 'my_client_secret__this_should_come_from_a_secret'
+            - name: CALLBACK_URI
+              value: 'http://this_apps_route_url/authcallback'
+            - name: DATA_URI
+              value: 'https://aap.example.com/api/v2/users/'
+            - name: CLIENT_SCOPE
+              value: 'read'
           ports:
             - name: http
               containerPort: 8081
@@ -27,12 +50,40 @@ spec:
 kind: Service
 apiVersion: v1
 metadata:
-  name: my-python
+  name: oauth2-client
+  labels:
+    app: oauth2-client
+    app.kubernetes.io/component: oauth2-client
+    app.kubernetes.io/instance: oauth2-client
+    app.kubernetes.io/name: oauth2-client
+    app.kubernetes.io/part-of: oauth2-client-app
+    app.openshift.io/runtime-version: latest
 spec:
-ports:
-  - name: http-8081
-    port: 8081
-    protocol: TCP
-    targetPort: 8081
-selector:
-  app: python-app
+  ports:
+    - name: 8081-tcp
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: oauth2-client
+    deployment: oauth2-client
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: oauth2-client
+  labels:
+    app: oauth2-client
+    app.kubernetes.io/component: oauth2-client
+    app.kubernetes.io/instance: oauth2-client
+    app.kubernetes.io/name: oauth2-client
+    app.kubernetes.io/part-of: oauth2-client-app
+    app.openshift.io/runtime-version: latest
+spec:
+  to:
+    kind: Service
+    name: oauth2-client
+    weight: 100
+  port:
+    targetPort: 8081-tcp
+  wildcardPolicy: None
